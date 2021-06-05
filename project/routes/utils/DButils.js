@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({path:'project/.env'})
 const sql = require("mssql");
 
 const config = {

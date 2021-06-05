@@ -1,65 +1,74 @@
 var express = require("express");
 var router = express.Router();
-const DButils = require("../routes/utils/DButils");
+const users_utils = require("../routes/utils/users_utils");
+const auth_utils = require("../routes/utils/auth_utils");
+
 const bcrypt = require("bcryptjs");
 
+// -------------------------------   Register  ----------------------------------
+
 router.post("/Register", async (req, res, next) => {
+  if (req.userID != undefined) 
+    throw { status: 401, message: "User already logged in!" };
+
   try {
-    // parameters exists
-    // valid parameters
-    // username exists
-    const users = await DButils.execQuery(
-      "SELECT username FROM dbo.users_tirgul"
-    );
+    if (!req.body.userName || !req.body.firstName || !req.body.lastName || !req.body.country || !req.body.password || !req.body.email || !req.body.image) 
+      throw { status: 400, message: "Not all reqired argument was given!" };
 
-    if (users.find((x) => x.username === req.body.username))
-      throw { status: 409, message: "Username taken" };
+    let existsUser = await auth_utils.checkUserName(req);
+    if(existsUser == false)
+      throw { status: 409, message: "Username is already taken" };
 
-    //hash the password
     let hash_password = bcrypt.hashSync(
       req.body.password,
       parseInt(process.env.bcrypt_saltRounds)
     );
     req.body.password = hash_password;
 
-    // add the new username
-    await DButils.execQuery(
-      `INSERT INTO dbo.users_tirgul (username, password) VALUES ('${req.body.username}', '${hash_password}')`
-    );
-    res.status(201).send("user created");
-  } catch (error) {
+    await auth_utils.Register(req, hash_password);
+    res.status(201).send("User created on site");
+  } 
+  catch (error) {
     next(error);
   }
 });
 
+// -------------------------------   Login  ----------------------------------
 router.post("/Login", async (req, res, next) => {
   try {
-    const user = (
-      await DButils.execQuery(
-        `SELECT * FROM dbo.users_tirgul WHERE username = '${req.body.username}'`
-      )
-    )[0];
-    // user = user[0];
-    console.log(user);
+    if (req.userID != undefined)
+     throw { status: 401, message: "User already logged in!"};
 
+    if (!req.body.userName || !req.body.password) 
+      throw { status: 400, message: "Not all reqired argument was given!" };
+
+    const user = await auth_utils.getUserFromDB(req.body.userName);
     // check that username exists & the password is correct
     if (!user || !bcrypt.compareSync(req.body.password, user.password)) {
       throw { status: 401, message: "Username or Password incorrect" };
     }
 
-    // Set cookie
-    req.session.user_id = user.user_id;
+    req.session.userID = user.userID;
+    res.status(200).send("Login Succeeded!");
 
-    // return cookie
-    res.status(200).send("login succeeded");
-  } catch (error) {
+    // Update favorite games for the user
+    users_utils.updateFavoriteGames(user.userID);
+  } 
+  catch (error) {
     next(error);
   }
 });
 
+// ---------   Logout  -----------
 router.post("/Logout", function (req, res) {
-  req.session.reset(); // reset the session info --> send cookie when  req.session == undefined!!
-  res.send({ success: true, message: "logout succeeded" });
-});
+  if (req.userID != undefined) {
+    req.session.reset();
+    res.send({ status: 200, message: "Logout succeeded!" });
+  }
+  else {
+    req.session.reset();
+    res.send({ status: 200, message: "There is no logged in user"});
+  };
+})
 
 module.exports = router;

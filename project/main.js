@@ -1,10 +1,7 @@
 //#region global imports
 const DButils = require("./routes/utils/DButils");
 const axios = require("axios");
-const bcrypt = require("bcryptjs");
-require("dotenv").config();
-//#endregion
-//#region express configures
+require("dotenv").config({path: 'project/.env'})
 var express = require("express");
 var path = require("path");
 const session = require("client-sessions");
@@ -16,16 +13,24 @@ app.use(logger("dev")); //logger
 app.use(express.json()); // parse application/json
 app.use(
   session({
-    cookieName: "session", // the cookie key name
-    secret: process.env.COOKIE_SECRET, // the encryption key
-    duration: 24 * 60 * 60 * 1000, // expired after 20 sec
-    activeDuration: 1000 * 60 * 5, // if expiresIn < activeDuration,
+    cookieName: "session", 
+    secret: process.env.COOKIE_SECRET, 
+    duration: 20 * 60 * 1000, 
+    activeDuration: 0, 
     cookie: {
       httpOnly: false,
     },
-    //the session will be extended by activeDuration milliseconds
   })
 );
+
+let api_domain = "https://soccer.sportmonks.com/api/v2.0";
+process.env.api_domain = api_domain;
+
+let LEAGUE_ID = 271;
+process.env.LEAGUE_ID = LEAGUE_ID;
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
 app.use(express.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
 app.use(express.static(path.join(__dirname, "public"))); //To serve static files such as images, CSS files, and JavaScript files
 
@@ -48,19 +53,26 @@ app.options("*", cors(corsConfig));
 const port = process.env.PORT || "3000";
 
 const auth = require("./routes/auth");
+const manage_league = require("./routes/manage_league");
 const users = require("./routes/users");
 const league = require("./routes/league");
 const teams = require("./routes/teams");
+const players = require("./routes/players");
+const coaches = require("./routes/coaches");
+const search = require("./routes/search");
+const { waitForDebugger } = require("inspector");
+
+
 
 //#endregion
 
 //#region cookie middleware
 app.use(function (req, res, next) {
-  if (req.session && req.session.user_id) {
-    DButils.execQuery("SELECT user_id FROM users")
+  if (req.session && req.session.userID) {
+    DButils.execQuery("SELECT userID FROM dbo.Users")
       .then((users) => {
-        if (users.find((x) => x.user_id === req.session.user_id)) {
-          req.user_id = req.session.user_id;
+        if (users.find((x) => x.userID === req.session.userID)) {
+          req.userID = req.session.userID;
         }
         next();
       })
@@ -76,9 +88,15 @@ app.get("/alive", (req, res) => res.send("I'm alive"));
 
 // Routings
 app.use("/users", users);
+app.use("/manage_league", manage_league);
 app.use("/league", league);
 app.use("/teams", teams);
+app.use("/players", players);
+app.use("/coaches", coaches);
+app.use("/search", search);
+
 app.use(auth);
+app.use(manage_league);
 
 app.use(function (err, req, res, next) {
   console.error(err);
@@ -89,8 +107,10 @@ const server = app.listen(port, () => {
   console.log(`Server listen on port ${port}`);
 });
 
-// process.on("SIGINT", function () {
-//   if (server) {
-//     server.close(() => console.log("server closed"));
-//   }
-// });
+process.on("SIGINT", function () {
+  if (server) {
+    server.close(() => console.log("server closed"));
+  }
+});
+
+module.exports = app;
