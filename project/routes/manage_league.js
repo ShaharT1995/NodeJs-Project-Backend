@@ -8,6 +8,20 @@ const referee_utils = require("./utils/referee_utils");
 const users_utils = require("./utils/users_utils");
 const teams_utils = require("./utils/teams_utils");
 
+// Get all referees in the system
+router.get("/getReferees/", async (req, res, next) => {
+  try {
+    let referees = await referee_utils.getAllReferees();
+    if (referees.length == 0)
+      res.status(204).send("There is no referees in the system");
+    
+    res.status(200).send(referees);
+  } 
+  catch (error) {
+    next(error);
+  }
+});
+
 // Authenticate all incoming requests by middleware
 router.use(async function (req, res, next) {
   if (req.session && req.session.userID && req.session.userID == 154) {
@@ -29,7 +43,7 @@ router.use(async function (req, res, next) {
 router.get("/getAllGames", async (req, res, next) => {
     try {
       const games = await games_utils.getAllGame();
-      res.send(games);
+      res.status(200).send(games);
     } catch (error) {
       next(error);
     }
@@ -80,7 +94,7 @@ router.put("/addResultToGame", async (req, res, next) => {
       if (game.length == 0)
         throw { status: 404, message: "GameID is not exists!" };
       
-      let game_time_string = game[0].game_date + " " + game[0].game_time + ":00:000";  
+      let game_time_string = game.game_date + " " + game.game_time + ":00:000";  
       var dateParts = game_time_string.split("-");
       var jsDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2].substr(0,2), dateParts[2].substr(3,2), dateParts[2].substr(6,2), 0, 0);
 
@@ -120,7 +134,7 @@ router.post("/addListEventsToGame", async (req, res, next) => {
         throw { status: 404, message: "GameID is not exists!" };
 
       // Check the date of the game
-      let game_time_string = game[0].game_date + " " + game[0].game_time + ":00:000";  
+      let game_time_string = game.game_date + " " + game.game_time + ":00:000";  
       var dateParts = game_time_string.split("-");
       var jsDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2].substr(0,2), dateParts[2].substr(3,2), dateParts[2].substr(6,2), 0, 0);
 
@@ -159,8 +173,8 @@ router.post("/addReferee", async (req, res, next) => {
         }
       });
     }
-    catch {
-      flag = false;
+    catch (err){
+      res.status(409).send("Username is already taken");
     }
 
     if (flag) {

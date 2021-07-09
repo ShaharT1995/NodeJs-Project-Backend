@@ -5,6 +5,7 @@ const games_utils = require("./games_utils");
 const api_domain = process.env.api_domain; 
 const LEAGUE_ID = process.env.league_ID;
 
+// Get the current season of superliga
 var CURRENT_SEASON = null;
 const getLeagueSeason = async() => {
     let league = await axios.get(`${api_domain}/leagues/${LEAGUE_ID}`, {

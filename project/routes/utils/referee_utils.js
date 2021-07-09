@@ -32,6 +32,15 @@ async function checkReferee(refereeID){
   return referee[0];
 }  
 
+async function getAllReferees(){
+  const referees = await DButils.execQuery(
+    `SELECT Referees.refereeID, Users.firsName, Users.lastName from Referees,Users
+            WHERE Referees.userID = Users.userID and Referees.status = 1`
+  );
+  return referees;
+}  
+
 exports.deleteReferee = deleteReferee;
 exports.checkReferee = checkReferee;
 exports.addReferee = addReferee;
+exports.getAllReferees = getAllReferees;

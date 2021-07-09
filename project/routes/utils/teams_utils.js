@@ -5,6 +5,7 @@ const games_utils = require("./games_utils");
 const api_domain = process.env.api_domain; 
 const LEAGUE_ID = process.env.league_ID;
 
+// Get the current season of superliga
 var CURRENT_SEASON = null;
 const getLeagueSeason = async() => {
     let league = await axios.get(`${api_domain}/leagues/${LEAGUE_ID}`, {
@@ -50,15 +51,17 @@ async function checkTeamInLeague(teamID) {
   });
   
   if (team.data.data.league.data.id != LEAGUE_ID && team.data.data.league.data.current_season_id != CURRENT_SEASON)
-      throw { status: 403, message: "The team is not part of the Superliga" };  
+      throw { status: 404, message: "The team is not part of the Superliga" };  
 }
 
 // Get all the data of list of players
 function extractRelevantPlayerData(players_info) {
     return players_info.map((player_info) => {
-      const { fullname } = player_info.data.data;
+      const { fullname, player_id, image_path} = player_info.data.data;
       return {
         name: fullname,
+        playerID: player_id,
+        image: image_path
       };
     });
 }
@@ -112,39 +115,21 @@ async function getTeamInfo(team_id_list) {
     return extractRelevantTeamData(teams_info);
 }
 
-// Return the team data for search - For search/:name
-async function getTeamForSearch(team_id_list) {
-  let teams_info = await getTeamFromAPI(team_id_list);
-  return extractRelevantTeamDataSearch(teams_info);
-}
-
-// Get all the data about list of teams - For search/:name
-async function extractRelevantTeamDataSearch(teams_info) {
-  teams_info = teams_info.filter(team => (team.data.data.league != null && team.data.data.league.data.id == LEAGUE_ID &&
-                                          team.data.data.league.data.current_season_id == CURRENT_SEASON));
-
-  let data = await Promise.all(teams_info.map(async (team) => {
-    return {
-      name: team.data.data.name,
-      logo_path: team.data.data.logo_path,
-    };
-  }));
-  return data;
-}
-
 // Get all the data about list of teams - For users/favoritesTeam
 async function extractRelevantTeamData(teams_info) {
   let data = await Promise.all(teams_info.map(async team => {
     let coach_name = "";
     let team_id = team.data.data.id;
     
-    if (team.data.data.coach != null)
+    if (team.data.data.coach != null) {
       coach_name = team.data.data.coach.data.fullname;
+    }
 
     if (team.data.data.league.data.id != LEAGUE_ID && team.data.data.league.data.current_season_id != CURRENT_SEASON)
       throw { status: 403, message: "The team is not part of the Superliga" };  
 
     return {
+      teamID: team.data.data.id,
       name: team.data.data.name,
       coach: coach_name,
       players: await getPlayersByTeam(team_id),
@@ -163,8 +148,14 @@ async function getTeamFullInfo(teamID) {
   });
 
   let coach_name = "";
-  if (team.data.data.coach != null)
+  let coach_image = "";
+  let coach_ID = 0;
+
+  if (team.data.data.coach != null){
     coach_name = team.data.data.coach.data.fullname;
+    coach_ID = team.data.data.coach.data.coach_id;
+    coach_image = team.data.data.coach.data.image_path;
+  }
 
   if (team.data.data.league.data.id != LEAGUE_ID && team.data.data.league.data.current_season_id != CURRENT_SEASON)
       throw { status: 403, message: "The team is not part of the Superliga" };  
@@ -175,13 +166,38 @@ async function getTeamFullInfo(teamID) {
         future_games: await games_utils.getTeamFutureGames(teamID),
         past_Games: await games_utils.getTeamPastGames(teamID),
         coach: coach_name,
+        coachID: coach_ID,
+        coach_image: coach_image,
         players: await getPlayersByTeam(teamID),
     };
   }
 }
 
+// Return all the teams that plays in the current
+async function getAllTeams() {
+  let teams_array = await axios.get(`${api_domain}/teams/season/${CURRENT_SEASON}`, {
+    params: {
+      api_token: process.env.api_token,
+    },
+  });
+``
+  teams_array = teams_array.data.data;
+
+  let data = [];
+  for (let i = 0; i < teams_array.length; i++){
+    let dict = {};
+    dict["teamID"] =  teams_array[i].id;
+    dict["teamName"] =  teams_array[i].name;
+
+    data.push(dict);
+  }
+
+  return data;
+}
+
+
+exports.getAllTeams = getAllTeams;
 exports.getTeamFullInfo = getTeamFullInfo;
 exports.getTeamInfo = getTeamInfo;
-exports.getTeamForSearch = getTeamForSearch;
 exports.getTeamNameByID = getTeamNameByID;
 exports.checkTeamInLeague = checkTeamInLeague;

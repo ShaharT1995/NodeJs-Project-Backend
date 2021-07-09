@@ -1,4 +1,3 @@
-const teams_utils = require("./teams_utils");
 const DButils = require("./DButils");
 
 // Check if the type of event entered by the user is correct (For manage_league/addListEventsToGame)
@@ -27,7 +26,7 @@ async function updateResult(req) {
   );  
 }
 
-// Enter events to a game (For manage_league/addListEventsToGame)
+// Enter events to a game (For manage_league/addListEventsToGame) //TODO
 async function createEvent(req) {
   let events_list = req.body.listEvents;
   let game_date = await getGameDate(req.body.gameID);
@@ -38,6 +37,16 @@ async function createEvent(req) {
           (${req.body.gameID}, CAST('${event_time}' as DATETIME), ${events_list[i].minute}, '${events_list[i].event_description}', '${events_list[i].type}')`
       );
   }
+}
+
+// Enter events to a game (For manage_league/addListEventsToGame)
+async function createGameEvent(req, game_date) {  
+  let event_time = game_date + " " + req.body.event_time + ":00:000";
+    await DButils.execQuery(
+        `INSERT INTO Events (gameID, event_time, minute, event_description, type) VALUES
+        (${req.body.gameID}, CAST('${event_time}' as DATETIME), ${req.body.minute}, '${req.body.event_description}', '${req.body.type}')`
+    );
+      
 }
 
 // Return the date of the game
@@ -120,25 +129,14 @@ async function getTeamFutureGames(team_id) {
 }
 
 async function getGameDetails(game){
-  let homeTeamID = game.homeTeamID;
-  let awayTeamID =game.awayTeamID;
-  let refereeID = game.refereeID;
   let game_date = game.game_time.substring(0, 10);
   let game_time = game.game_time.substring(11, 16);
-  // let game_date = String(game.game_time).substring(0, 10);
-  // let game_time = String(game.game_time).substring(11, 21);
 
+  game.gameID = game.gameID;
   game.game_date = game_date;
   game.game_time = game_time;
-  game.referee_name = await getRefereeName(refereeID);
-  game.home_team = await teams_utils.getTeamNameByID(homeTeamID);
-  game.away_team = await teams_utils.getTeamNameByID(awayTeamID);
 
   await delete game['game_tiime'];
-  await delete game['refereeID'];
-  await delete game['homeTeamID'];
-  await delete game['awayTeamID'];
-
   return game;
 }
 
@@ -190,18 +188,18 @@ async function getNextGameOfTheLeague() {
 // Return the details of a game - DB (For manage_league/addResultToGame)
 async function getGame(gameID) {
   const games = await DButils.execQuery(
-    `select homeTeamID, awayTeamID,
+    `select gameID,homeTeamID, awayTeamID,
      convert(varchar,game_time,120) as game_time,
      refereeID, field  from Games where gameID='${gameID}'`
   );
   let returnGames = await gamesDetails(games);
-  return returnGames;
+  return returnGames[0];
 }
 
 // Get all games from DB - For manage_league/getAllGames
 async function getAllGame() {
   const games = await DButils.execQuery(
-    `select homeTeamID, awayTeamID, 
+    `select gameID, homeTeamID, awayTeamID, 
      convert(varchar,game_time,120) as game_time,
      field, refereeID  from Games`
   );
@@ -243,3 +241,4 @@ exports.addNewGame = addNewGame;
 exports.updateResult = updateResult;
 exports.createEvent = createEvent;
 exports.checkEventType = checkEventType;
+exports.createGameEvent = createGameEvent;

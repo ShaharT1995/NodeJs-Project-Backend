@@ -137,7 +137,7 @@ router.get("/favoritePlayers", async (req, res, next) => {
 router.get("/favoriteTeams", async (req, res, next) => {
   try {
     if (!req.userID) 
-      next(new Error("not autorize user."));
+      throw { status: 401, message: "Not autorize user!"};
     
     const userID = req.session.userID;
     const team_ids = await users_utils.getFavoriteTeams(userID);
@@ -161,7 +161,7 @@ router.get("/favoriteTeams", async (req, res, next) => {
 router.get("/favoriteGames", async (req, res, next) => {
   try {
     if (!req.userID) 
-      next(new Error("not autorize user."));
+      throw { status: 401, message: "Not autorize user!"};
     
     const userID = req.session.userID;
     const game_ids = await users_utils.getFavoriteGames(userID);
@@ -169,30 +169,10 @@ router.get("/favoriteGames", async (req, res, next) => {
     if (game_ids.length == 0)
       res.status(200).send("No favorites games");
 
-    let game_ids_array = [];
-    game_ids.map((element) => game_ids_array.push(element.gameID));
-    const results = await games_utils.getGameInfo(game_ids_array);
-    res.status(200).send(results);
-  } 
-  catch (error) {
-    next(error);
-  }
-});
-
-// Get last seaarch of the user
-router.get("/getLastSearch", async (req, res, next) => {
-  try {
-    if (!req.userID) 
-      next(new Error("not autorize user."));
-    
-    const query =  req.session.query;
-    const queryResults = req.session.lastSearchQuery;
-
-    if (query == null)
-      res.status(200).send("No search performed");
-
     else {
-      let results = {"query": query, "queryResults": queryResults};
+      let game_ids_array = [];
+      game_ids.map((element) => game_ids_array.push(element.gameID));
+      const results = await games_utils.getGameInfo(game_ids_array);
       res.status(200).send(results);
     }
   } 
@@ -200,6 +180,5 @@ router.get("/getLastSearch", async (req, res, next) => {
     next(error);
   }
 });
-
 
 module.exports = router;

@@ -3,6 +3,7 @@ const axios = require("axios");
 const api_domain = process.env.api_domain; 
 const LEAGUE_ID = process.env.league_ID;
 
+// Get the current seson of superliga
 var CURRENT_SEASON = null;
 const getLeagueSeason = async() => {
     let league = await axios.get(`${api_domain}/leagues/${LEAGUE_ID}`, {
@@ -14,7 +15,7 @@ const getLeagueSeason = async() => {
     CURRENT_SEASON = league.data.data.current_season_id;
   }
   
-  getLeagueSeason();
+getLeagueSeason();
 
 // Get all the players of the team
 async function getPlayerIdsByTeam(team_id) {
@@ -87,6 +88,7 @@ async function extractRelevantPlayerData(players_info) {
       name = player_info.data.data.team.data.name
 
     return {
+      playerID: player_info.data.data.player_id,
       name: player_info.data.data.fullname,
       image: player_info.data.data.image_path,
       position: player_info.data.data.position_id,
@@ -119,6 +121,7 @@ async function getPlayerFullInfo(playerID) {
       throw { status: 403, message: "The team is not part of the Superliga" };
 
     return {
+      playerID: player_info.data.data.player_id,
       name: player_info.data.data.fullname,
       image: player_info.data.data.image_path,
       position: player_info.data.data.position_id,

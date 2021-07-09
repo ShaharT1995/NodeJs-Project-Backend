@@ -2,6 +2,7 @@ const axios = require("axios");
 const api_domain = process.env.api_domain; 
 const LEAGUE_ID = process.env.league_ID;
 
+// Get the season of the superliga
 var CURRENT_SEASON = null;
 const getLeagueSeason = async() => {
     let league = await axios.get(`${api_domain}/leagues/${LEAGUE_ID}`, {
@@ -23,31 +24,17 @@ async function getCoachFullInfo(coachID) {
             api_token: process.env.api_token,
             },
         });
-        let name = "";
-        if (coach.data.data.team_id != null){
-            const team = await axios.get(`${api_domain}/teams/${coach.data.data.team_id}`, {
-                params: {
-                api_token: process.env.api_token,
-                include: "league",
-                },
-            });
-            name = team.data.data.name
-
-            if (team.data.data.league.data.id != LEAGUE_ID && team.data.data.league.data.current_season_id != CURRENT_SEASON)
-                throw { status: 403, message: "The coach is not part of the Superliga" };
-        }
-        else
-            throw { status: 403, message: "The coach is not part of the Superliga" };
-
+        
         return {
-            name: coach.data.data.fullname,
-            image: coach.data.data.image_path,
-            team_name: name,
-            common_name: coach.data.data.common_name,
-            birthdate: coach.data.data.birthdate,
-            birthcountry: coach.data.data.birthcountry,
-            nationality: coach.data.data.nationality,
-        };
+          coachID: coach.data.data.coach_id,
+          name: coach.data.data.fullname,
+          image: coach.data.data.image_path,
+          teamID: coach.data.data.team_id,
+          common_name: coach.data.data.common_name,
+          birthdate: coach.data.data.birthdate,
+          birthcountry: coach.data.data.birthcountry,
+          nationality: coach.data.data.nationality,
+      };
     }
     catch {
         throw { status: 404, message: "CoachID is not exists in Superliga!" };

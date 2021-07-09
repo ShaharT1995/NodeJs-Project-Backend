@@ -4,15 +4,9 @@ var router = express.Router();
 const league_utils = require("./utils/league_utils");
 const users_utils = require("./utils/users_utils");
 
-router.get("/HomePage", async (req, res, next) => {
+// For logged in user, show the 3 next game in favorites
+router.get("/futureGamesHomePage", async (req, res, next) => {
   try {
-    let return_dict = {};
-
-    // Left Column
-    const left_column = await league_utils.getLeagueDetails();
-    return_dict.left_column = left_column;
-
-    // Right Column
     if (req.session && req.session.userID) {
       users_utils.getAllUsers()
         .then((users) => {
@@ -21,26 +15,48 @@ router.get("/HomePage", async (req, res, next) => {
           }
         })
     }
-    if (req.userID != null) {
-      let right_column = await league_utils.futureFavoritesGames(req.session.userID);
-      return_dict.right_column = right_column;
-    }
-    else
-      return_dict.right_column = {};
+    let right_column  = {};
+    if (req.userID != null) 
+      right_column = await league_utils.futureFavoritesGames(req.session.userID);
     
-    res.send(return_dict);
+    res.status(200).send(right_column);
   } 
   catch (error) {
     next(error);
   }
 });
 
-// Get league page
+// HomePage
+router.get("/LeagueInfo", async (req, res, next) => {
+  try {
+    const league_info = await league_utils.getLeagueDetails();
+    res.status(200).send(league_info);
+  } 
+  catch (error) {
+    next(error);
+  }
+});
+
+// Get league page (9)
 router.get("/LeaguePage", async (req, res, next) => {
   try {
     const games = await league_utils.getLeaguePage();
-    res.send(games);
-  } catch (error) {
+
+    for (i = 0; i < games.future_games.length; i++) {
+      let gameID = games.future_games[i].gameID;
+
+      let favorite = false;
+      if (req.session && req.session.userID){
+        let inFavorite = await users_utils.checkIfInFavoritesGames(req.session.userID, gameID);
+        if(inFavorite.length == 0)
+          favorite = true; 
+      }
+      games.future_games[i].notInFavorite = favorite;
+    }
+
+    res.status(200).send(games);
+  } 
+  catch (error) {
     next(error);
   }
 });
